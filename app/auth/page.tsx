@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/supabaseClient";
 
@@ -12,6 +12,17 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Check for error parameter in URL
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get('error');
+    if (urlError) {
+      setError(urlError);
+      // Clean up the URL
+      window.history.replaceState({}, '', '/auth');
+    }
+  }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -19,20 +30,34 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
         });
         if (error) throw error;
-        // Show success message for sign up
+        
+        // If user is already confirmed (e.g., in development), redirect to dashboard
+        if (data?.user?.confirmed_at) {
+          router.push('/dashboard');
+          return;
+        }
+        
+        // Show success message for sign up that needs confirmation
         setError("Please check your email to confirm your account!");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        router.push("/dashboard");
+        
+        if (data?.session) {
+          router.push('/dashboard');
+          router.refresh(); // Force a refresh to update the session state
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

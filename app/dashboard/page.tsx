@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import { supabase } from "@/supabaseClient";
@@ -33,6 +33,17 @@ const deals = [
 
 export default function Dashboard() {
   const router = useRouter();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth');
+      }
+    };
+    
+    checkSession();
+  }, [router]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
