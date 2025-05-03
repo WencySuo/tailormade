@@ -21,7 +21,16 @@ export default function Auth() {
       // Clean up the URL
       window.history.replaceState({}, '', '/auth');
     }
-  }, []);
+
+    // Check if user is already signed in
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push('/dashboard');
+      }
+    };
+    checkSession();
+  }, [router]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +64,11 @@ export default function Auth() {
         if (error) throw error;
         
         if (data?.session) {
+          // Set the session cookie
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
           router.push('/dashboard');
           router.refresh(); // Force a refresh to update the session state
         }
