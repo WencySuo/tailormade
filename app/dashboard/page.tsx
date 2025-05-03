@@ -123,14 +123,22 @@ export default function Dashboard() {
       if (!user) throw new Error('User not authenticated');
 
       // Upload file to Supabase storage
-      const { error: uploadError } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('bank-statements')
         .upload(`${user.id}/${file.name}`, file, {
           cacheControl: '3600',
           upsert: true
         });
+      console.log('Upload result:', { data, uploadError });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('Quota')) {
+          throw new Error('Storage quota exceeded');
+        } else if (uploadError.message.includes('Permission denied')) {
+          throw new Error('Permission denied');
+        }
+        throw uploadError;
+      }
 
       setUploadStatus('success');
       setTimeout(() => setUploadStatus('idle'), 3000); // Reset after 3 seconds
