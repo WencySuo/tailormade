@@ -1,6 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import target from "../assets/target.svg";
+import starbucks from "../assets/starbucks.png";
+import amazon from "../assets/amazon.png";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeftIcon, ChevronRightIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
@@ -12,21 +15,21 @@ const deals = [
     id: 1,
     title: "Target Rewards",
     description: "5% cashback on your next purchase at Target based on your shopping history",
-    image: "/target-logo.png",
+    image: target,
     savings: "$25"
   },
   {
     id: 2,
     title: "Starbucks Reward",
     description: "Free drink reward based on your frequent visits",
-    image: "/starbucks-logo.png",
+    image: starbucks,
     savings: "$6"
   },
   {
     id: 3,
     title: "Amazon Prime Deal",
     description: "Special discount on items from your wishlist",
-    image: "/amazon-logo.png",
+    image: amazon,
     savings: "$30"
   }
 ];
@@ -41,7 +44,7 @@ export default function Dashboard() {
         router.push('/auth');
       }
     };
-    
+
     checkSession();
   }, [router]);
 
@@ -49,16 +52,33 @@ export default function Dashboard() {
     await supabase.auth.signOut();
     router.push("/");
   };
-  const [currentDeal, setCurrentDeal] = useState(0);
+  // For infinite carousel: add clones
+  const extendedDeals = [deals[deals.length - 1], ...deals, deals[0]];
+  const [currentDeal, setCurrentDeal] = useState(1); // Start at first real deal
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(0);
 
   const nextDeal = () => {
-    setCurrentDeal((prev) => (prev + 1) % deals.length);
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentDeal((prev) => prev + 1);
   };
 
   const prevDeal = () => {
-    setCurrentDeal((prev) => (prev - 1 + deals.length) % deals.length);
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setCurrentDeal((prev) => prev - 1);
+  };
+
+  // Handle transition end for infinite loop
+  const handleTransitionEnd = () => {
+    setIsTransitioning(false);
+    if (currentDeal === extendedDeals.length - 1) {
+      setCurrentDeal(1);
+    } else if (currentDeal === 0) {
+      setCurrentDeal(extendedDeals.length - 2);
+    }
   };
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -68,7 +88,7 @@ export default function Dashboard() {
 
   const handleDragEnd = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
-    
+
     const end = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
     const diff = dragStart - end;
 
@@ -95,7 +115,7 @@ export default function Dashboard() {
       <nav className="fixed w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-50 py-4">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">TailorMade</div>
-          <button 
+          <button
             onClick={handleSignOut}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition"
           >
@@ -108,12 +128,12 @@ export default function Dashboard() {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl font-bold mb-8">Welcome back!</h1>
-          
+
           {/* Deals Carousel */}
           <div className="mb-12">
             <h2 className="text-2xl font-semibold mb-6">Personalized Deals</h2>
             <div className="relative">
-              <div 
+              <div
                 className="overflow-hidden relative rounded-xl"
                 onMouseDown={handleDragStart}
                 onMouseUp={handleDragEnd}
@@ -121,17 +141,18 @@ export default function Dashboard() {
                 onTouchStart={handleDragStart}
                 onTouchEnd={handleDragEnd}
               >
-                <div 
-                  className="flex transition-transform duration-300 ease-in-out"
+                <div
+                  className={`flex ${isTransitioning ? 'transition-transform duration-300 ease-in-out' : ''}`}
                   style={{ transform: `translateX(-${currentDeal * 100}%)` }}
+                  onTransitionEnd={handleTransitionEnd}
                 >
-                  {deals.map((deal) => (
-                    <div 
-                      key={deal.id}
+                  {extendedDeals.map((deal, i) => (
+                    <div
+                      key={i === 0 ? 'clone-last' : i === extendedDeals.length - 1 ? 'clone-first' : deal.id}
                       className="w-full flex-shrink-0 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                        <div className="w-16 h-16 relative">
                           <Image
                             src={deal.image}
                             alt={deal.title}
@@ -151,15 +172,15 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
-              
+
               {/* Carousel Controls */}
-              <button 
+              <button
                 onClick={prevDeal}
                 className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg"
               >
                 <ChevronLeftIcon className="w-6 h-6" />
               </button>
-              <button 
+              <button
                 onClick={nextDeal}
                 className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg"
               >
@@ -171,8 +192,8 @@ export default function Dashboard() {
                 {deals.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentDeal(index)}
-                    className={`w-2 h-2 rounded-full transition-colors ${index === currentDeal ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                    onClick={() => setCurrentDeal(index + 1)}
+                    className={`w-2 h-2 rounded-full transition-colors ${index + 1 === currentDeal ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
                   />
                 ))}
               </div>
@@ -196,10 +217,10 @@ export default function Dashboard() {
                     PDF, CSV (max. 10MB)
                   </p>
                 </div>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".pdf,.csv" 
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.csv"
                   onChange={handleFileUpload}
                   multiple
                 />
