@@ -1,6 +1,14 @@
-import Image from "next/image";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    router.push('/auth');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Navigation */}
@@ -12,7 +20,10 @@ export default function Home() {
             <a href="#solutions" className="hover:text-blue-600 dark:hover:text-blue-400 transition">Solutions</a>
             <a href="#contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition">Contact</a>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition">
+          <button 
+            onClick={handleGetStarted}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition"
+          >
             Get Started
           </button>
         </div>
@@ -29,7 +40,10 @@ export default function Home() {
               Experience the future of finance with our innovative platform that adapts to your unique needs
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full text-lg transition">
+              <button 
+                onClick={handleGetStarted}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full text-lg transition"
+              >
                 Start Your Journey
               </button>
               <button className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-800 px-8 py-3 rounded-full text-lg transition">
