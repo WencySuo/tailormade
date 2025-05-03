@@ -100,14 +100,46 @@ export default function Dashboard() {
     setIsDragging(false);
   };
 
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    // Here you would typically handle the file upload to your backend
-    console.log("Files selected:", files);
-    // TODO: Implement actual file upload and processing
-  };
+    setUploadStatus('uploading');
+    setUploadError(null);
+
+    try {
+      const file = files[0];
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size must be less than 10MB');
+      }
+
+      // Get user ID for the file path
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Upload file to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('bank-statements')
+        .upload(`${user.id}/${file.name}`, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      setUploadStatus('success');
+      setTimeout(() => setUploadStatus('idle'), 3000); // Reset after 3 seconds
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadStatus('error');
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload file');
+    }
+  };  
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -207,15 +239,40 @@ export default function Dashboard() {
               <p className="text-gray-600 dark:text-gray-300 mb-6">
                 Upload your bank statements to get personalized deals and insights based on your spending habits.
               </p>
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-blue-600 dark:hover:border-blue-400 transition">
+              <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition ${uploadStatus === 'error' ? 'border-red-500' : uploadStatus === 'success' ? 'border-green-500' : 'border-gray-300 dark:border-gray-600 hover:border-blue-600 dark:hover:border-blue-400'}`}>
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <ArrowUpTrayIcon className="w-8 h-8 mb-3 text-gray-400" />
+                  {uploadStatus === 'uploading' ? (
+                    <svg className="animate-spin h-8 w-8 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : uploadStatus === 'success' ? (
+                    <svg className="h-8 w-8 mb-3 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : uploadStatus === 'error' ? (
+                    <svg className="h-8 w-8 mb-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  ) : (
+                    <ArrowUpTrayIcon className="w-8 h-8 mb-3 text-gray-400" />
+                  )}
                   <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
+                    {uploadStatus === 'uploading' ? (
+                      'Uploading...'
+                    ) : uploadStatus === 'success' ? (
+                      'File uploaded successfully!'
+                    ) : uploadStatus === 'error' ? (
+                      <span className="text-red-500">{uploadError || 'Upload failed'}</span>
+                    ) : (
+                      <><span className="font-semibold">Click to upload</span> or drag and drop</>
+                    )}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    PDF, CSV (max. 10MB)
-                  </p>
+                  {uploadStatus === 'idle' && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      PDF, CSV (max. 10MB)
+                    </p>
+                  )}
                 </div>
                 <input
                   type="file"
